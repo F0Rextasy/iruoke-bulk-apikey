@@ -4,7 +4,7 @@
 /**
  * Connect Iruoke to a 9Router instance.
  *
- * Iruoke serves an OpenAI-compatible endpoint (https://inference.iruoke.global/v1), so a single
+ * Iruoke serves an OpenAI-compatible endpoint (https://api.iruoke.top/v1), so a single
  * provider-node carries every key: this registers one `openai-compatible` node
  * with prefix `iruoke` and then one connection per API key, named
  * `iruoke-001`, `iruoke-002`, … Re-running it is idempotent (an existing node
@@ -13,7 +13,7 @@
  * Usage:
  *   node src/connect-9router.js \
  *     --base http://localhost:20128 --password 123456 \
- *     --api-key dahl_xxxx [--name "Iruoke"] [--prefix iruoke]
+ *     --api-key sk-xxxx [--name "Iruoke"] [--prefix iruoke]
  *
  *   node src/connect-9router.js                  # register every key in keys.txt
  *   node src/connect-9router.js --model <id>     # pin the connection's default model
@@ -24,7 +24,7 @@
  *   --api-key <key>    Iruoke API key     (default: every key in keys.txt)
  *   --name <name>      provider-node name       (default Iruoke)
  *   --prefix <slug>    provider prefix in 9Router (default iruoke)
- *   --base-url <url>   provider base URL        (default https://inference.iruoke.global/v1)
+ *   --base-url <url>   provider base URL        (default https://api.iruoke.top/v1)
  *   --model <id>       connection default model (default MiniMaxAI/MiniMax-M2.7)
  *
  * Zero dependencies. Node.js >= 18.
