@@ -12,7 +12,9 @@
  * (`enable_groups[0]` from `/api/pricing`) and walks the cheapest priced models
  * until the chat answers 200.
  *
- * Flow, per account, every request over one pinned exit:
+ * Flow, per account, every request over one pinned exit. Your proxy list is
+ * OPTIONAL: pass --pool (or the IRUOKE_PROXIES env) and every request goes
+ * through an exit from it; without a pool the tool connects directly:
  *   1. register  `POST /api/user/register` {username,password}  (no e-mail field)
  *   2. login     `POST /api/user/login`     {username,password} → access_token
  *   3. account   `GET  /api/user/self`      → id + quota
@@ -29,7 +31,7 @@
  *   --host <name>    panel host                               [iruoke.com]
  *   --model <id>     pin the gate to one model id (default: cheapest priced)
  *   --group <name>   pin the token group (default: the model's own group)
- *   --pool <file>    proxy list, one exit per line    (env IRUOKE_PROXIES)
+ *   --pool <file>    proxy list, one exit per line, optional (env IRUOKE_PROXIES)
  *   --gap MS         pause between rounds inside a worker          [800]
  *   --tries N        exits tried per account before giving up             [2]
  *   --timeout MS     per-request timeout                                 [60000]
@@ -92,10 +94,10 @@ if (has('help') || has('h')) {
   --host <name>  panel host                                [iruoke.com]
   --model <id>   pin the gate to one model            [cheapest priced]
   --group <name> pin the token group        [the model's own group]
-  --pool <file>  proxy list, one exit per line     (env IRUOKE_PROXIES)
+  --pool <file>  proxy list, one exit per line, optional (env IRUOKE_PROXIES)
 
-Every request leaves through an exit from your pool; the tool never dials the
-panel directly.`);
+Requests go through your proxy list when one is provided (--pool / env). Without
+a pool the tool connects directly.`);
   process.exit(0);
 }
 
@@ -140,8 +142,10 @@ function say(msg) {
 function loadExits() {
   const file = path.resolve(ROOT, PROXY_FILE);
   if (!fs.existsSync(file)) {
-    console.error(`! proxy list not found: ${PROXY_FILE} (one exit per line: http://host:port)`);
-    process.exit(2);
+    // No pool = DIRECT mode: a proxy is recommended at scale (per-IP limits,
+    // bans), but the tool works without one. `null` is the direct sentinel.
+    console.log(`no proxy list at ${PROXY_FILE} — running WITHOUT a proxy (direct). Put exits there (or pass --pool) to rotate per account.`);
+    return [null];
   }
   const exits = fs
     .readFileSync(file, 'utf8')
@@ -151,8 +155,8 @@ function loadExits() {
     // a screened list may carry a trailing note (`http://host:port 1.2.3.4`)
     .map((s) => s.split(/\s+/)[0]);
   if (!exits.length) {
-    console.error(`! proxy list ${PROXY_FILE} is empty`);
-    process.exit(2);
+    console.log(`${PROXY_FILE} has no usable exits — running WITHOUT a proxy (direct).`);
+    return [null];
   }
   return exits;
 }
@@ -320,15 +324,24 @@ async function openTunnel(exit, host, port, timeoutMs) {
   return httpTunnel(exit, host, port, timeoutMs);
 }
 
+/** A raw socket straight to host:port (no proxy) — the direct-mode twin of openTunnel. */
+function directConnect(host, port, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const sock = net.connect({ host, port });
+    const t = setTimeout(() => { sock.destroy(); reject(new Error(`connect timeout (${host}:${port})`)); }, timeoutMs);
+    sock.once('error', (e) => { clearTimeout(t); try { sock.destroy(); } catch {} reject(new Error(`connect failed: ${e.message}`)); });
+    sock.once('connect', () => { clearTimeout(t); resolve(sock); });
+  });
+}
+
 /**
- * One HTTPS request through `exit`. No exit means no request: the rail never
- * dials the panel from your own line.
+ * One HTTPS request through `exitLine`. `null` (no pool was given) is direct
+ * mode: the socket goes straight to the panel from this machine.
  */
 function exitRequest(exitLine, url, { method = 'GET', headers = {}, body = null, timeoutMs = TIMEOUT_MS } = {}) {
   return new Promise((resolve, reject) => {
-    const exit = parseExit(exitLine);
-    if (!exitLine) return reject(new Error('refusing a direct request: this attempt has no exit'));
-    if (!exit) return reject(new Error(`unparseable exit ${maskExit(exitLine)}`));
+    const exit = exitLine ? parseExit(exitLine) : null;
+    if (exitLine && !exit) return reject(new Error(`unparseable exit ${maskExit(exitLine)}`));
     const u = new URL(url);
     const payload =
       body === null || body === undefined ? null : Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
@@ -360,7 +373,10 @@ function exitRequest(exitLine, url, { method = 'GET', headers = {}, body = null,
       reject(e);
     };
     let tlsSock = null;
-    openTunnel(exit, u.hostname, Number(u.port || 443), Math.min(timeoutMs, 20000))
+    const open = exit
+      ? openTunnel(exit, u.hostname, Number(u.port || 443), Math.min(timeoutMs, 20000))
+      : directConnect(u.hostname, Number(u.port || 443), Math.min(timeoutMs, 20000));
+    open
       .then((tunnel) => {
         const leftover = tunnel.__leftover;
         tunnel.__leftover = Buffer.alloc(0);
@@ -735,7 +751,7 @@ async function mintOne(exits, startExit, index, models) {
 // --------------------------------------------------------------------- modes
 
 async function screen(exits) {
-  say(`screening ${exits.length} exit(s) against ${HOST}`);
+  say(`screening ${exits.filter(Boolean).length || 'direct'} exit(s) against ${HOST}`);
   const live = [];
   let cursor = 0;
   const workers = Array.from({ length: CONC }, async () => {
@@ -746,7 +762,7 @@ async function screen(exits) {
       try {
         const r = await exitRequest(exitLine, `${BASE}/api/status`, { timeoutMs: 12000 });
         if (r.status === 200) {
-          live.push(exitLine);
+          if (exitLine) live.push(exitLine); // nothing to screen in direct mode
           say(`  ✓ ${maskExit(exitLine)} ${r.status}`);
         } else {
           say(`  ✗ ${maskExit(exitLine)} ${r.status}`);
@@ -758,7 +774,7 @@ async function screen(exits) {
   });
   await Promise.all(workers);
   fs.writeFileSync(path.join(ROOT, 'proxies.live.txt'), live.join('\n') + (live.length ? '\n' : ''));
-  say(`screen done: ${live.length}/${exits.length} live → proxies.live.txt`);
+  say(`screen done: ${live.length}/${exits.filter(Boolean).length || 'direct'} live → proxies.live.txt`);
 }
 
 async function probe(exits, exitLine) {
@@ -781,7 +797,7 @@ async function probe(exits, exitLine) {
       /* dead exit */
     }
   }
-  say(`exits: ${live}/${exits.length} reach ${HOST}`);
+  say(`exits: ${live}/${exits.filter(Boolean).length || 'direct'} reach ${HOST}`);
   if (fs.existsSync(KEYS_FILE)) {
     const keys = fs.readFileSync(KEYS_FILE, 'utf8').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     say(`keys.txt: ${keys.length} key(s) — run --verify-only to re-test them`);
@@ -849,7 +865,7 @@ async function collect() {
 async function mint(exits, models) {
   const order = gateOrder(models, PIN_MODEL);
   say(
-    `minting ${COUNT} account(s), conc ${CONC}, ${exits.length} exit(s), ` +
+    `minting ${COUNT} account(s), conc ${CONC}, ${exits.filter(Boolean).length || 'direct'} exit(s), ` +
       `gate ${order.map((m) => `${m.name}[${m.groups[0] || '-'}]`).join(' → ')}`
   );
   let cursor = 0;

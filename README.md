@@ -80,8 +80,8 @@ curl https://api.iruoke.top/v1/chat/completions \
 # clone or fork this repository, then:
 cd iruoke-bulk-apikey
 
-# 1) your proxy list, one per line (http://… or socks5://…)
-printf 'http://127.0.0.1:8080\n' > proxies.txt
+# 1) your proxy list, one per line (http://… or socks5://…) — optional, see below
+printf 'http://127.0.0.1:8080\n' > proxies.txt   # optional — without it the tool runs direct
 
 # 2) go
 node src/launcher.js              # interactive
@@ -151,7 +151,7 @@ node src/cli.js [mode] [flags]
 | `--host <name>` | `api.iruoke.top` | panel host (the same rail runs on mirrors of this panel) |
 | `--model <id>` | cheapest priced | pin the gate to one model id |
 | `--group <name>` | the model's group | pin the token group |
-| `--pool <file>` | `proxies.txt` | proxy list (`IRUOKE_PROXIES` env works too) |
+| `--pool <file>` | `proxies.txt` | optional proxy list (`IRUOKE_PROXIES` env works too) |
 | `--gap MS` | 800 | pause between models inside one account |
 | `--tries N` | 2 | exits tried per account |
 
@@ -159,7 +159,13 @@ The startup probe walks the front of the pool until an exit answers the panel, s
 
 ## 🛰️ Behind a proxy
 
-Every request leaves through an exit from your pool — the tool never dials the panel directly, and **one account lives on one exit** for its whole life (the panel binds the session to the IP). Measured: **9 exits** in the operator's pool could reach this host during the scale run, and the mint ran at conc 2-3 without a single 503.
+**Optional — recommended at scale (per-IP limits, bans).** The tool works without a proxy too.
+
+- **With a pool:** pass `--pool <file>` (or set `IRUOKE_PROXIES`) and every request goes through an exit from that list. One account stays on one exit for its whole life (the panel binds the session to the IP).
+- **Without a pool:** the CLI prints `running WITHOUT a proxy (direct)` and connects directly — sign-up, key creation and the chat gate all run the same way.
+- `--screen` tests the exits you have against the panel, or the direct route when you have none.
+
+Measured on the operator's fleet: **9 exits** in the pool could reach this host during the scale run, and the mint ran at conc 2-3 without a single 503.
 
 ## 📄 Files
 
