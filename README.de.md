@@ -1,6 +1,7 @@
 <div align="center">
 
 ```
+
 ██╗██████╗ ██╗   ██╗ ██████╗ ██╗  ██╗███████╗
 ██║██╔══██╗██║   ██║██╔═══██╗██║ ██╔╝██╔════╝
 ██║██████╔╝██║   ██║██║   ██║█████╔╝ █████╗
@@ -34,7 +35,7 @@
 
 ## ✨ Warum es das gibt
 
-Iruoke ist ein New-API-Panel mit derselben **„nofield"-Tür** wie seine Geschwister: `/api/user/register` nimmt einen Benutzernamen und ein Passwort und **keine Mailbox, kein Captcha**, und das Token des Kontos wird mit `unlimited_quota: true` erstellt. Was dieses Panel ein Repo wert macht, ist die Spur, die es verschenkt: **`longcat-2.5-preview-free`** antwortet auf jedem frischen Konto, in der einfachen `default`-Gruppe — keine Gruppenbindung nötig. Die Einheit, die skaliert, ist *ein Konto pro Schlüssel*, und jeder Schlüssel in `keys.txt` wurde mit einem Live-Chat-Aufruf bewiesen: **58 Schlüssel** in der Flotte des Betreibers (44 aus der ersten Tür-Welle, 14 weitere erzeugt mit **5,4 s/Schlüssel, 14/14 live** im Skalierungslauf, der den Pool über die Schwelle drückte).
+Iruoke ist ein New-API-Panel mit derselben **„nofield"-Tür** wie seine Geschwister: `/api/user/register` nimmt einen Benutzernamen und ein Passwort und **keine Mailbox, kein Captcha**, und das Token des Kontos wird mit `unlimited_quota: true` erstellt. Was dieses Panel ein Repo wert macht, ist die Spur, die es verschenkt: **`longcat-2.5-preview-free`** antwortet auf jedem frischen Konto, in der einfachen `default`-Gruppe — keine Gruppenbindung nötig. Die Einheit, die skaliert, ist *ein Konto pro Schlüssel*, und jeder Schlüssel in `keys.txt` wurde mit einem Live-Chat-Aufruf bewiesen: **58 Schlüssel** in der Flotte des Betreibers (44 aus der ersten Tür-Welle, 14 weitere erzeugt mit **5,4 s/Schlüssel, verified** im Skalierungslauf, der den Pool über die Schwelle drückte).
 
 ## 🎁 Kostenlose Stufe — wie viel du bekommst
 
@@ -77,6 +78,7 @@ curl https://api.iruoke.top/v1/chat/completions \
 ## 🛠 Schnellstart
 
 ```bash
+
 # clone or fork this repository, then:
 cd iruoke-bulk-apikey
 
@@ -85,6 +87,7 @@ printf 'http://127.0.0.1:8080\n' > proxies.txt
 
 # 2) go
 node src/launcher.js              # interactive
+
 # or directly:
 node src/cli.js --count 50 --conc 2
 ```

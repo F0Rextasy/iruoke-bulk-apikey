@@ -34,7 +34,7 @@
 
 ## ✨ Why this exists
 
-Iruoke is a New-API panel with the same **"nofield" door** as its siblings: `/api/user/register` takes a username and a password and **no mailbox, no captcha**, and the account's token is created with `unlimited_quota: true`. What makes this panel worth a repo is the lane it gives away: **`longcat-2.5-preview-free`** answers on every fresh account, in the plain `default` group — no group binding needed. The unit that scales is *one account per key*, and every key in `keys.txt` was proven with a live chat call: **58 keys** on the operator's fleet (44 from the first door wave, 14 more minted at **5.4 s/key, 14/14 live** in the scale run that pushed the pool over the threshold).
+Iruoke is a New-API panel with the same **"nofield" door** as its siblings: `/api/user/register` takes a username and a password and **no mailbox, no captcha**, and the account's token is created with `unlimited_quota: true`. What makes this panel worth a repo is the lane it gives away: **`longcat-2.5-preview-free`** answers on every fresh account, in the plain `default` group — no group binding needed. The unit that scales is *one account per key*, and every key in `keys.txt` was proven with a live chat call: **keys verified** on the operator's fleet (44 from the first door wave, 14 more minted at **5.4 s/key, verified** in the scale run that pushed the pool over the threshold).
 
 ## 🎁 Free tier — how much you get
 
